@@ -4,17 +4,24 @@ import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
+import android.util.Log
 import com.gallery.categorized.data.model.GalleryImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class MediaStoreRepository(private val context: Context) {
 
+    companion object {
+        private const val TAG = "MediaStoreRepository"
+    }
+
     /**
      * Load all images from device storage using MediaStore API
      */
     suspend fun loadImagesFromDevice(): List<GalleryImage> = withContext(Dispatchers.IO) {
         val images = mutableListOf<GalleryImage>()
+
+        Log.d(TAG, "🔍 Starting to load images from MediaStore...")
 
         val projection = arrayOf(
             MediaStore.Images.Media._ID,
@@ -30,13 +37,29 @@ class MediaStoreRepository(private val context: Context) {
         val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
 
         try {
-            context.contentResolver.query(
+            Log.d(TAG, "📱 Querying MediaStore at: ${MediaStore.Images.Media.EXTERNAL_CONTENT_URI}")
+
+            val cursor = context.contentResolver.query(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                 projection,
                 null,
                 null,
                 sortOrder
-            )?.use { cursor ->
+            )
+
+            if (cursor == null) {
+                Log.e(TAG, "❌ Cursor is null! Permission might not be granted or MediaStore unavailable")
+                return@withContext images
+            }
+
+            Log.d(TAG, "✅ Cursor obtained, count: ${cursor.count}")
+
+            cursor.use {
+                if (cursor.count == 0) {
+                    Log.w(TAG, "⚠️ No images found in MediaStore. Device might have no images or permission denied.")
+                    return@withContext images
+                }
+
                 val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
                 val displayNameColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
                 val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
@@ -47,36 +70,49 @@ class MediaStoreRepository(private val context: Context) {
                 val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.HEIGHT)
 
                 while (cursor.moveToNext()) {
-                    val id = cursor.getLong(idColumn)
-                    val displayName = cursor.getString(displayNameColumn) ?: "Unknown"
-                    val dateAdded = cursor.getLong(dateAddedColumn)
-                    val dateModified = cursor.getLong(dateModifiedColumn)
-                    val size = cursor.getLong(sizeColumn)
-                    val mimeType = cursor.getString(mimeTypeColumn) ?: "image/*"
-                    val width = cursor.getInt(widthColumn)
-                    val height = cursor.getInt(heightColumn)
+                    try {
+                        val id = cursor.getLong(idColumn)
+                        val displayName = cursor.getString(displayNameColumn) ?: "Unknown"
+                        val dateAdded = cursor.getLong(dateAddedColumn)
+                        val dateModified = cursor.getLong(dateModifiedColumn)
+                        val size = cursor.getLong(sizeColumn)
+                        val mimeType = cursor.getString(mimeTypeColumn) ?: "image/*"
+                        val width = cursor.getInt(widthColumn)
+                        val height = cursor.getInt(heightColumn)
 
-                    val contentUri = ContentUris.withAppendedId(
-                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                        id
-                    )
-
-                    images.add(
-                        GalleryImage(
-                            id = id,
-                            uri = contentUri.toString(),
-                            displayName = displayName,
-                            dateAdded = dateAdded,
-                            dateModified = dateModified,
-                            size = size,
-                            mimeType = mimeType,
-                            width = width,
-                            height = height
+                        val contentUri = ContentUris.withAppendedId(
+                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                            id
                         )
-                    )
+
+                        images.add(
+                            GalleryImage(
+                                id = id,
+                                uri = contentUri.toString(),
+                                displayName = displayName,
+                                dateAdded = dateAdded,
+                                dateModified = dateModified,
+                                size = size,
+                                mimeType = mimeType,
+                                width = width,
+                                height = height
+                            )
+                        )
+
+                        if (images.size == 1) {
+                            Log.d(TAG, "📸 First image loaded: $displayName (id: $id)")
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ Error loading individual image", e)
+                    }
                 }
+
+                Log.d(TAG, "✅ Successfully loaded ${images.size} images from MediaStore")
             }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "❌ SecurityException: Permission denied!", e)
         } catch (e: Exception) {
+            Log.e(TAG, "❌ Error loading images from MediaStore", e)
             e.printStackTrace()
         }
 

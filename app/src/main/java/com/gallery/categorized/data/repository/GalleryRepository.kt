@@ -2,12 +2,14 @@ package com.gallery.categorized.data.repository
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import com.gallery.categorized.data.local.GalleryDao
 import com.gallery.categorized.data.model.GalleryImage
 import com.gallery.categorized.data.model.ImageCategory
 import com.gallery.categorized.ml.ImageClassifier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 class GalleryRepository(
@@ -15,6 +17,10 @@ class GalleryRepository(
     private val mediaStoreRepository: MediaStoreRepository,
     private val imageClassifier: ImageClassifier
 ) {
+
+    companion object {
+        private const val TAG = "GalleryRepository"
+    }
 
     /**
      * Get all images from database
@@ -37,18 +43,23 @@ class GalleryRepository(
      */
     suspend fun syncImagesFromDevice(): Result<Int> = withContext(Dispatchers.IO) {
         try {
-            val deviceImages = mediaStoreRepository.loadImagesFromDevice()
+            Log.d(TAG, "🔄 Starting sync from device...")
 
-            // Get existing images from database
-            val existingImageIds = mutableSetOf<Long>()
-            galleryDao.getAllImages().collect { images ->
-                existingImageIds.addAll(images.map { it.id })
-            }
+            val deviceImages = mediaStoreRepository.loadImagesFromDevice()
+            Log.d(TAG, "📥 Loaded ${deviceImages.size} images from MediaStore")
+
+            // Get existing images from database - CRITICAL FIX: Use first() instead of collect()
+            val existingImages = galleryDao.getAllImages().first()
+            val existingImageIds = existingImages.map { it.id }.toSet()
+            Log.d(TAG, "💾 Found ${existingImages.size} images already in database")
 
             // Insert new images
             val newImages = deviceImages.filter { it.id !in existingImageIds }
             if (newImages.isNotEmpty()) {
+                Log.d(TAG, "➕ Inserting ${newImages.size} new images")
                 galleryDao.insertImages(newImages)
+            } else {
+                Log.d(TAG, "✅ No new images to insert")
             }
 
             // Clean up deleted images
@@ -57,8 +68,10 @@ class GalleryRepository(
                 galleryDao.deleteImagesNotIn(currentImageIds)
             }
 
+            Log.d(TAG, "✅ Sync complete! New images: ${newImages.size}")
             Result.success(newImages.size)
         } catch (e: Exception) {
+            Log.e(TAG, "❌ Sync failed", e)
             Result.failure(e)
         }
     }
