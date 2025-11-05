@@ -102,9 +102,8 @@ fun CategoryBlocksGrid(
     }
 
     LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
+        columns = GridCells.Fixed(1), // Single column for horizontal cards
         contentPadding = PaddingValues(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier
     ) {
@@ -128,15 +127,15 @@ fun CategoryBlock(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(1.2f)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+            .height(100.dp), // Fixed smaller height
+        shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 4.dp,
-            pressedElevation = 8.dp
-        )
+            defaultElevation = 2.dp,
+            pressedElevation = 6.dp
+        ),
+        onClick = onClick
     ) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
@@ -147,18 +146,20 @@ fun CategoryBlock(
                         )
                     )
                 )
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.SpaceBetween
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
             ) {
                 // Icon
                 Icon(
                     imageVector = categoryInfo.icon,
                     contentDescription = categoryInfo.name,
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier.size(40.dp),
                     tint = Color.White.copy(alpha = 0.9f)
                 )
 
@@ -166,28 +167,25 @@ fun CategoryBlock(
                 Column {
                     Text(
                         text = categoryInfo.name,
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = if (count > 0) "$count images" else "No images",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.9f)
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.85f)
                     )
                 }
             }
 
-            // Optional: Add count badge
+            // Count badge
             if (count > 0) {
                 Box(
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(12.dp)
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White.copy(alpha = 0.2f)),
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color.White.copy(alpha = 0.25f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(

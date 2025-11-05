@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.jetpacktest.data.model.GalleryImage
 import com.example.jetpacktest.data.model.ImageCategory
+import com.example.jetpacktest.ui.components.CategoryBlocksGrid
 import com.example.jetpacktest.ui.viewmodel.GalleryUiState
 
 // Tab 1: All Images Tab
@@ -80,8 +81,6 @@ fun CategorizedImagesTab(
     onCategorySelected: (String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showCategorySheet by remember { mutableStateOf(false) }
-
     Box(modifier = modifier.fillMaxSize()) {
         when {
             uiState.isLoading -> {
@@ -93,58 +92,64 @@ fun CategorizedImagesTab(
                     subtitle = "Analyze images to see them organized by category"
                 )
             }
+            uiState.selectedCategory == null -> {
+                // Show category blocks grid
+                CategoryBlocksGrid(
+                    categories = uiState.categories,
+                    onCategoryClick = { category ->
+                        onCategorySelected(category)
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
             else -> {
+                // Show images for selected category
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Category selector button
+                    // Back button header
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { showCategorySheet = true }
-                            .padding(16.dp),
+                            .clickable { onCategorySelected(null) },
                         color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
                     ) {
                         Row(
                             modifier = Modifier.padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Selected Category",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                                )
-                                Text(
-                                    text = uiState.selectedCategory ?: "All Categories",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
                             Icon(
-                                imageVector = Icons.Default.ArrowDropDown,
-                                contentDescription = "Select Category",
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Back to categories",
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer
                             )
+                            Column {
+                                Text(
+                                    text = uiState.selectedCategory,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    text = "${uiState.images.filter { it.category == uiState.selectedCategory }.size} images",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                )
+                            }
                         }
                     }
 
-                    // Filtered images
-                    val filteredImages = if (uiState.selectedCategory != null) {
-                        uiState.images.filter { it.category == uiState.selectedCategory }
-                    } else {
-                        uiState.images.filter { it.category != null }
-                    }
+                    // Images in selected category
+                    val filteredImages = uiState.images.filter { it.category == uiState.selectedCategory }
 
                     if (filteredImages.isEmpty()) {
                         EmptyState(
                             message = "No images in this category",
-                            subtitle = "Try selecting a different category"
+                            subtitle = "Analyze more images to populate this category"
                         )
                     } else {
                         ImageGrid(
                             images = filteredImages,
-                            showCategoryBadge = uiState.selectedCategory == null,
+                            showCategoryBadge = false,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -176,19 +181,6 @@ fun CategorizedImagesTab(
                 Text(error)
             }
         }
-    }
-
-    // Category bottom sheet
-    if (showCategorySheet) {
-        CategoryBottomSheet(
-            categories = uiState.categories,
-            selectedCategory = uiState.selectedCategory,
-            onCategorySelected = {
-                onCategorySelected(it)
-                showCategorySheet = false
-            },
-            onDismiss = { showCategorySheet = false }
-        )
     }
 }
 
