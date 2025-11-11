@@ -28,62 +28,43 @@ data class CategoryInfo(
 )
 
 object CategoryConfig {
-    val categories = listOf(
-        CategoryInfo(
-            name = "Finance",
-            icon = Icons.Default.AccountBalance,
-            gradientColors = Color(0xFF4CAF50) to Color(0xFF8BC34A)
-        ),
-        CategoryInfo(
-            name = "House",
-            icon = Icons.Default.Home,
-            gradientColors = Color(0xFFFF9800) to Color(0xFFFFB74D)
-        ),
-        CategoryInfo(
-            name = "Tech",
-            icon = Icons.Default.Computer,
-            gradientColors = Color(0xFF2196F3) to Color(0xFF64B5F6)
-        ),
-        CategoryInfo(
-            name = "Health",
-            icon = Icons.Default.FavoriteBorder,
-            gradientColors = Color(0xFFE91E63) to Color(0xFFF48FB1)
-        ),
-        CategoryInfo(
-            name = "Work",
-            icon = Icons.Default.Work,
-            gradientColors = Color(0xFF9C27B0) to Color(0xFFBA68C8)
-        ),
-        CategoryInfo(
-            name = "Trip",
-            icon = Icons.Default.Flight,
-            gradientColors = Color(0xFF00BCD4) to Color(0xFF4DD0E1)
-        ),
-        CategoryInfo(
-            name = "Shopping",
-            icon = Icons.Default.ShoppingCart,
-            gradientColors = Color(0xFFFF5722) to Color(0xFFFF8A65)
-        ),
-        CategoryInfo(
-            name = "Fashion",
-            icon = Icons.Default.Style,
-            gradientColors = Color(0xFFE91E63) to Color(0xFFF06292)
-        ),
-        CategoryInfo(
-            name = "Politics",
-            icon = Icons.Default.Flag,
-            gradientColors = Color(0xFF607D8B) to Color(0xFF90A4AE)
-        ),
-        CategoryInfo(
-            name = "Other",
-            icon = Icons.Default.Category,
-            gradientColors = Color(0xFF9E9E9E) to Color(0xFFBDBDBD)
-        )
+    // Predefined color palette for dynamic categories
+    private val colorPalette = listOf(
+        Color(0xFF2196F3) to Color(0xFF64B5F6), // Blue
+        Color(0xFF4CAF50) to Color(0xFF8BC34A), // Green
+        Color(0xFFFF9800) to Color(0xFFFFB74D), // Orange
+        Color(0xFFE91E63) to Color(0xFFF48FB1), // Pink
+        Color(0xFF9C27B0) to Color(0xFFBA68C8), // Purple
+        Color(0xFF00BCD4) to Color(0xFF4DD0E1), // Cyan
+        Color(0xFFFF5722) to Color(0xFFFF8A65), // Deep Orange
+        Color(0xFF3F51B5) to Color(0xFF7986CB), // Indigo
+        Color(0xFF009688) to Color(0xFF4DB6AC), // Teal
+        Color(0xFFFF6F00) to Color(0xFFFFA726), // Amber
+        Color(0xFF673AB7) to Color(0xFF9575CD), // Deep Purple
+        Color(0xFFCDDC39) to Color(0xFFDCE775), // Lime
     )
 
+    // Generate consistent CategoryInfo based on category name
     fun getCategoryInfo(categoryName: String): CategoryInfo {
-        return categories.find { it.name == categoryName }
-            ?: CategoryInfo("Other", Icons.Default.Category, Color.Gray to Color.LightGray)
+        // Use hash to get consistent color for same category name
+        val colorIndex = kotlin.math.abs(categoryName.hashCode()) % colorPalette.size
+        val colors = colorPalette[colorIndex]
+
+        // Use a generic icon for all categories
+        val icon = Icons.Default.Category
+
+        // Capitalize and format the category name
+        val formattedName = categoryName
+            .split(" ", "_", "-")
+            .joinToString(" ") { word ->
+                word.replaceFirstChar { it.uppercase() }
+            }
+
+        return CategoryInfo(
+            name = formattedName,
+            icon = icon,
+            gradientColors = colors
+        )
     }
 }
 
@@ -93,13 +74,9 @@ fun CategoryBlocksGrid(
     onCategoryClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Create a map of category counts
-    val categoryCountMap = categories.associate { it.category to it.count }
-
-    // Get all predefined categories with their counts
-    val allCategories = CategoryConfig.categories.map { categoryInfo ->
-        categoryInfo to (categoryCountMap[categoryInfo.name] ?: 0)
-    }
+    // Sort categories by count (descending) and then by name
+    val sortedCategories = categories
+        .sortedWith(compareByDescending<ImageCategory> { it.count }.thenBy { it.category })
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(1), // Single column for horizontal cards
@@ -107,11 +84,12 @@ fun CategoryBlocksGrid(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier
     ) {
-        items(allCategories) { (categoryInfo, count) ->
+        items(sortedCategories) { imageCategory ->
+            val categoryInfo = CategoryConfig.getCategoryInfo(imageCategory.category)
             CategoryBlock(
                 categoryInfo = categoryInfo,
-                count = count,
-                onClick = { onCategoryClick(categoryInfo.name) }
+                count = imageCategory.count,
+                onClick = { onCategoryClick(imageCategory.category) }
             )
         }
     }
